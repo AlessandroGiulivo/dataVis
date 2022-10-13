@@ -1,0 +1,392 @@
+
+---
+title: "Assignment 3"
+author: "Alessandro Giulivo, Francesca Rinaldi, Martina Monciotti"
+date: "12/12/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r results = "hide"}
+library(ggplot2)
+library(ggfortify)
+library(factoextra)
+library(Rtsne)
+library(dplyr)
+library(umap)
+```
+
+
+*QUESTION 1*
+
+```{r}
+#Read data
+#setwd("C:/Users/aless/Desktop/Bioinformatics/Erasmus BCN/Data Visualisation/homeassignment")
+P3<- read.delim("P3.tsv.gz", row.names=1)
+P4<- read.delim("P4.tsv.gz", row.names=1)
+P5<- read.delim("P5.tsv.gz", row.names=1)
+
+#Check data
+#head(P3, 5)
+#head(P4, 5)
+#head(P5, 5)
+
+#Alternatives
+#P3<- read.table(gzfile("P3.tsv.gz", "rt"), header= TRUE)
+#P4<- read.table(gzfile("P4.tsv.gz", "rt"), header= TRUE)
+#P5<- read.table(gzfile("P5.tsv.gz", "rt"), header= TRUE)
+```
+
+-------------------------------------------------------------------------------------------------------------
+
+**QUESTION 2**
+
+```{r}
+treat<- read.delim("samplesheet.tsv", row.names=1)
+#treat <- as.factor(readLines("samplesheet.tsv"))
+#Alternatives
+#treat<- read.table(("samplesheet.tsv", "rt"), header= TRUE))
+table(treat)
+treat= tidyr::separate(
+  treat,
+  col= label,
+  into= c("cells", "drugs"),
+  sep = "\\+")
+```
+
+There are 2 kinds of cells (one infected with HIV and one with a latent virus), each one is treated with DMSO, SAHA and PMA. This creates 6 different combinations, the table above shows the number of cells in each condition.
+
+-------------------------------------------------------------------------------------------------------------
+
+**QUESTION 3**
+
+```{r}
+X3 <- t(P3)
+X4 <- t(P4)
+X5 <- t(P5)
+
+X1 = rbind(X3, X4, X5)
+
+data <- data.frame(row.names= rownames(X1), experiment= as.factor(rep(c("A", "B", "C"), each=96)), treatment=treat)
+
+colnames(data)<- c("experiment", "cells", "drugs")
+
+#PCA
+PCA = stats::prcomp(X1)
+plot(PCA$x)
+#coloring by treatment
+#using autoplot
+ggplot2::autoplot(PCA, data = data, colour = "drugs", shape= "cells") + theme_classic()
+#using factoextra
+factoextra::fviz_pca_ind(PCA, geom = "point", col.ind = data$drugs)
+factoextra::fviz_pca_ind(PCA, geom = "point", col.ind = data$cells)
+
+#coloring by experiment
+#using autoplot
+ggplot2::autoplot(PCA, data = data, colour = "experiment") + theme_classic()
+#using factoextra
+factoextra::fviz_pca_ind(PCA, geom = "point", col.ind = data$experiment)
+
+#creating scaled PCA
+print(dim(X1))
+X1=X1[, colSums(X1)>0] ## tip: rowSums > 0
+print(dim(X1))
+pca_res_scaled <- stats::prcomp(X1, scale=TRUE)
+#colored by treatment
+ggplot2::autoplot(pca_res_scaled, data = data, colour = "drugs", shape= "cells") + theme_classic()
+#colored by experiment
+ggplot2::autoplot(pca_res_scaled, data = data, colour = "experiment") + theme_classic()
+#creating normalized PCA
+Y1 = X1/rowSums(X1)
+normpca <- stats::prcomp(Y1, scale=TRUE)
+#colored by experiment
+plot(normpca$x, pch=19, col=data$experiment)
+#colored by treatment, using autoplot
+ggplot2::autoplot(normpca, data=data, colour="drugs") + theme_classic()
+```
+
+
+```{r warning = FALSE}
+#label the points to check the name of the outlier
+factoextra::fviz_pca_ind(normpca, repel= "TRUE")
+
+#remove the outlier
+X2 <- X1[!(row.names(X1) == "P2771_N704.S506"),]
+data2 <- data[!(row.names(data) == "P2771_N704.S506"),]
+treat2 <- treat[!(row.names(treat) == "P2771_N704.S506"),]
+```
+
+
+```{r}
+#produce new PCA
+X2=X2[, colSums(X2)>0]
+Y2 = X2/rowSums(X2)
+normpca <- stats::prcomp(Y2, scale=TRUE)
+#colored by experiment
+plot(normpca$x, pch=19, col=data2$experiment)
+#colored by treatment, using autoplot
+ggplot2::autoplot(normpca, data=data2, colour="drugs", shape = "cells") + theme_classic()
+```
+
+
+DMSO is the control and it's very similar to PMA, meaning that PMA doesn't have a significant effect. On the other hand, SAHA is very different from both of them, meaning that it has a significant effect. There is no batch effect, because in the graph colored by experiment the samples are not clustered based on the experiment that they're part of. However, we scaled the PCA and the scaled PCAs are more precise
+
+```{r}
+#tSNE
+tsne1 <- Rtsne(X1)
+
+## Check results generated
+names(tsne1)
+head(tsne1$Y)
+
+tsne_data <- as.data.frame(tsne1$Y)
+tsne_data$experiment <- data$cells
+tsne_data$treatment <- data$drugs
+
+## ggplot
+ggplot(tsne_data, aes(x=V1, y=V2)) + 
+  geom_point(aes(color=treatment, shape=experiment)) +
+  scale_shape_manual(values = c(3,17, 6)) +
+  ggtitle("tSNE 2D plot") + xlab("tSNE1") + ylab("tSNE2") + 
+  theme_classic()
+
+## Normalized tSNE
+X1=X1[, colSums(X1)>0]
+Y = X1/rowSums(X1)
+tSNE_norm <- Rtsne(Y, pca=TRUE)
+tsne_data2 <- as.data.frame(tSNE_norm$Y)
+tsne_data2$Experiment <- data$cells
+tsne_data2$Treatment <- data$drugs
+## ggplot
+tSNE2 <- ggplot(tsne_data2, aes(x=V1, y=V2)) + 
+  geom_point(aes(color=Treatment, shape=Experiment)) +
+  scale_shape_manual(values = c(3,17,6)) +
+  ggtitle("tSNE 2D plot: RNAseq normalization") + xlab("tSNE1") + ylab("tSNE2") + theme_classic() 
+print(tSNE2)
+```
+
+-------------------------------------------------------------------------------------------------------------
+
+**QUESTION 4**
+
+```{r}
+#changing perplexity
+set.seed(123) ## allows us to reproduce results
+
+list_plots <- list()
+for (p_value in c(1, 5, 10, 25, 50)) {
+  print(paste0("tSNE perplexity=", p_value))
+  
+  ## Default parameters for Rtsne
+  tsne_p <- Rtsne(X1, perplexity = p_value)
+
+  tsne_data2 <- as.data.frame(tsne_p$Y)
+  tsne_data2$Treatment <- data$drugs
+  tsne_data2$Experiment <- data$cells
+
+  ## ggplot
+  plot_p <- ggplot(tsne_data2, aes(x=V1, y=V2)) + 
+    geom_point(aes(color=Treatment, shape=Experiment)) +
+    scale_shape_manual(values = c(3,17,6)) +
+    ggtitle(paste0("tSNE 2D plot: perplexity=", p_value)) + xlab("tSNE1") + ylab("tSNE2") + 
+    theme_classic() 
+
+  print(plot_p)
+  
+  # alternative: save plots in list_plots
+  list_plots[[paste0("perp_", p_value)]] = plot_p
+} 
+#changing max_iterations
+set.seed(123) ## allows us to reproduce results
+
+for (max_iter in c(1, 10, 100, 500, 1000)) {
+  tsne <- Rtsne(X1)
+
+  tsne_data <- as.data.frame(tsne$Y)
+  tsne_data$Experiment <- data$cells
+  tsne_data$Treatment <- data$drugs
+  
+  library(ggplot2)
+  p <- ggplot(tsne_data, aes(x=V1, y=V2)) + 
+   geom_point(aes(color=Treatment, shape=Experiment)) +
+   scale_shape_manual(values = c(3,17,6)) +
+   ggtitle(paste("tSNE 2D plot: iterations =", max_iter)) + xlab("tSNE1") + ylab("tSNE2") + 
+   theme_classic()
+  print(p)
+}
+```
+
+In the previous plots we show how increasing the perplexity or the iterations numbers for a tSNE can generate more dense and defined and more distinct clusters, respectively.
+
+--------------------------------------------------------------------------------------------------------------
+
+**QUESTION 5**
+
+No, it is pretty clear from both the PCA and the tSNE graphs that SAHA and PMA have a different effect on the cells as the points associated to each drug are grouped very distinctly in two separate clusters. In particular, from the PCA plot we see that PMA treated cells are observed to be closer in similarity to DMSO (control) cells, so we might assume that PMA has a smaller effect than SAHA.
+
+--------------------------------------------------------------------------------------------------------------
+
+**QUESTION 6**
+
+The PC1 separates differently treated cells, having SAHA treated cells on the right and DMSO and PMA on the left, indicating similarity between the control group and PMA treated cells, thus showing lower effectiveness in the PMA drug. 
+Meanwhile PC2 separates dead from alive cells. On the top of the plot we have a few cells with low expression of genes (dead), on the lower half instead we have cells with high expression (alive).  
+
+
+---------------------------------------------------------------------------------------------------------------
+
+**QUESTION 8**
+
+```{r warning = FALSE}
+#define a function to plot the results
+plot_representation <- function(x_given, y_given, data, title) {
+  data_plot <- data.frame(x = x_given, 
+                          y = y_given, 
+                          col = data
+                          )
+  
+  p <- ggplot(data_plot) + geom_point(aes(x=x, y=y, color=col)) + 
+    ggtitle(title) + theme_classic()
+  
+  return(p)
+}
+
+#generate UMAP for first replicate
+p1_dataSet_UMAP <- umap::umap(X3)
+
+UMAP_plot1 <- plot_representation(p1_dataSet_UMAP$layout[,1], 
+                    p1_dataSet_UMAP$layout[,2], 
+                    treat$drugs,
+                    "UMAP: P1 dataset")
+print(UMAP_plot1)
+
+
+#generate UMAP for merged and normalized datasets
+pmerged_dataSet_UMAP <- umap::umap(Y1)
+
+UMAP_plot2 <- plot_representation(pmerged_dataSet_UMAP$layout[,1], 
+                    p1_dataSet_UMAP$layout[,2], 
+                    treat$drugs,
+                    "UMAP: Merged dataset")
+print(UMAP_plot2)
+```
+
+The first UMAP plot represents dataset X3 whereas the second plot represents datasets X3, X4 and X5 merged and normalized. After seeing what the UMAP for X3 looks like, we can predict that the ones for X4 and X5 would look similar, with DMSO and PMA having the same y-values and SAHA being different from them. In both plots, data points of the same color (representing the same drug) are well grouped together. However, data points belonging to each drug have different positions in the two plots. This is due to the fact that the second plot holds more information and was done after normalization. The positions of the groups of data points (given by different drugs) change across the x-axis but stay highly similar in respect to the y-axis. In both cases the DMSO (control) and the PMA groups have similar y-axis values and thus can be considered more similar to each other than to the SAHA group, just as was shown in the tSNE and PCA plots.
+
+----------------------------------------------------------------------------------------------------------------
+
+**QUESTION 9**
+
+```{r}
+#Explore minimum distance values
+custom.umap.config <- umap::umap.defaults
+
+custom.umap.config$n_neighbors = umap::umap.defaults$n_neighbors
+
+for (min_dist_values in c(0.1,0.5,0.9)) {
+  print(paste0("UMAP min_dist=", min_dist_values))
+  
+  custom.umap.config$min_dist = min_dist_values
+
+  umap_n <- umap(Y, config = custom.umap.config)
+  
+  UMAP_plot <- plot_representation(umap_n$layout[,1], 
+                    umap_n$layout[,2], 
+                    treat$drugs,
+                    paste0("UMAP: merged dataset: min_dist = ", min_dist_values))
+  
+  print(UMAP_plot)  
+} 
+```
+
+
+```{r warning = FALSE}
+# Explore number of neighbours
+for (n_neighbors_values in c(2,5,15,50,100,200)) {
+  print(paste0("UMAP n_neighbors=", n_neighbors_values))
+  
+  custom.umap.config$n_neighbors = n_neighbors_values
+
+  umap_n <- umap(Y, config = custom.umap.config)
+  
+  UMAP_plot <- plot_representation(umap_n$layout[,1], 
+                    umap_n$layout[,2], 
+                    treat$drugs,
+                    paste0("UMAP: merged dataset: n_neighbours = ", n_neighbors_values))
+  
+  
+  print(UMAP_plot)
+}
+```
+
+```{r}
+#Exploring random state values
+custom.umap.config <- umap::umap.defaults
+for (random_state_values in c(2,5,15,50,100,200)) {
+  print(paste0("UMAP random_state=", random_state_values))
+  
+  custom.umap.config$random_state = random_state_values
+
+  umap_n <- umap(Y, config = custom.umap.config)
+  
+  UMAP_plot <- plot_representation(umap_n$layout[,1], 
+                    umap_n$layout[,2], 
+                    treat$drugs,
+                    paste0("UMAP: merged dataset: random_state = ", random_state_values))
+  
+  
+  print(UMAP_plot)
+}
+```
+
+In the explorations we made above we tested some parameters:  
+-the min_dist  defines how close points appear in the layout of the plot. We tested it for three values: 0.1, 0.5, 0.9. Low values of `min_dist` lead to more tightly packed clusters, whereas larger values lead to more loose clusters.  
+-the `n_neighbours` parameter specifies the number of nearest points to each of the observations in the plot. For `n_neighbours` we tested the following values: 2,5,15,50,100,200. For low values we get many rarefied clusters, while when using higher values we obtain less clusters with more density of the points. So, the main difference is in how we want to analyze our data: a more accurate analisys (first case) or a more general overview (second case).  
+-`random state` is a parameter used for initializing the internal random number generator,that allows us to set a random seed state in order to ensure that results are reproduced exactly. This takes longer than the earlier runs with no random_state set.
+
+
+---------------------------------------------------------------------------------------------------------------
+
+**QUESTION 10**
+
+```{r}
+pca_plot <- plot_representation(normpca$x[,1], 
+                    normpca$x[,2],  treat2$drugs,
+                    "PCA")
+
+print(pca_plot)
+
+tSNE_plot <- plot_representation(tsne$Y[,1], 
+                    tsne$Y[,2],  treat$drugs,
+                    "tSNE")
+
+print(tSNE_plot)
+
+UMAP_plot <- plot_representation(pmerged_dataSet_UMAP$layout[,1], 
+                    pmerged_dataSet_UMAP$layout[,2],  treat$drugs,
+                    "UMAP")
+
+print(UMAP_plot)
+```
+
+
+Providing a plot using each of the three techniques can show us that the three of them bring similar results, with one cluster of points for each *treatment*. In particular though, **PCA** and **UMAP** convey very similar results both showing that DMSO (control) and PMA have a similar effect on the cells and both have a different effect from SAHA. On the other hand, *tSNE* is a bit more different: while still nicely showing the three clusters, their positions and the distances between them are not significant, so they can't be used to infer similiarities or dissimilarities between the effects of the drugs. In the tSNE plot, we can only get information about single points whithin each cluster (if two points within one cluster are close to each other, they are more similar than two points in the same cluster which are further apart).
+
+Both tSNE and UMAP algorithms exhibit strong local clustering and group similar categories together, but UMAP much more clearly separates these groups of similar categories from each other.
+
+PCA differs from both tSNE and UMAP in that it is the only model in which positions with respect to axes and distances between clusters are directly interpretable.
+
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+

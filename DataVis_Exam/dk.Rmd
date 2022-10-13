@@ -1,0 +1,202 @@
+---
+title: "**Final Exam <br><font color='#4CC3CD' size='5'>Data visualization (Course 2021/2022)**</font>"
+author: "<font color='#A8A8A8' size='3'>Bachelor’s Degree in Bioinformatics</font>"
+date: "<font color='#A8A8A8' size='3'>16 December 2021</font>"
+output:
+  html_document:
+    theme: yeti
+    css: https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.css
+    self_contained: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 6, fig.height = 4, fig.align = "center")
+library(ggplot2)
+library(shiny)
+library(plotly)
+library(dplyr)
+library(Rtsne)
+library(umap)
+```
+
+```{=html}
+<style>
+  .fig {width: 50%}
+  @import url(https://fonts.googleapis.com/css?family=Fira+Sans:300,300i,400,400i,500,500i,700,700i);
+  @import url(https://cdn.rawgit.com/tonsky/FiraCode/1.204/distr/fira_code.css);
+  @import url("https://use.fontawesome.com/releases/v5.10.1/css/all.css");
+</style>
+```
+
+# **Part B: Dimensionality Reduction**
+
+### **1. Background**
+  
+We propose to study *Hydra*, a genus of small fresh-water animals that looks like plants and that attach to the surface of fixed objects. *Hydra* has attracted the attention of biologists because it can fully regenerate from just a few cells.  
+  
+### **2. Problem**   
+  
+We have a data set of single-cell gene expression from *Hydra*. To generate the data, animals were dissociated to single cells and the mRNA of each cell were sequenced. We will use this data set to know how many different cell types exist in *Hydra*.  
+  
+Answer the questions below with R code. When prompted to, comment your results in English. When a figure is required, also provide the plot in your answer.  
+  
+#### **2.1 Load the data [1]**
+
+**1. Load the data called hydra_scRNA.txt in your R session. Make sure that the dimensions are 793 x 4153. | [0.5]**  
+
+```{r q2.1 1}
+
+# Answer:
+data <- read.delim('hydra_scRNA.txt.gz')
+dim(data)
+
+```
+
+The rows are individual cells, the columns are _Hydra_ genes. The entries of the data set are gene expression score. 
+
+There are five replicates in this dataset (the samples were analyzed five times in different repetitions). Load the replicate information from file `rep.txt` as a vector.
+
+```{r q2.1 2, eval=FALSE}
+
+# Answer:
+rep <- as.vector(readLines('rep.txt'))
+rep_data <- data.frame(row.names = rownames(data), 
+                        rep=rep)
+
+```
+
+**2. How many samples are included in each replicate | [0.5]**  
+```{r q2.2 1}
+
+# Answer:
+#summary(as.factor(rep))
+
+```
+
+*Answer: *  
+```{r  q2.2 2}
+
+# Answer:
+# There are 96 samples in replicate 1,
+# 105 samples in replicate 2,
+# 216 samples in replicate 3,
+# 257 samples in replicate 4,
+# 119 samples in replicate 5.
+
+```
+
+
+#### **2.2 Batch effects [2.5]**
+
+
+**3. Use either UMAP or t-SNE to project the points on a 2D space. Plot the projected points using a different color for each repetition. Add a legend. | [1,5]**  
+
+```{r q2.2 3, eval = FALSE}
+
+# Answer:
+library(umap)
+
+plot_representation <- function(x_given, y_given, meta_data, title) {
+  data_plot <- data.frame(x = x_given, 
+                          y = y_given, 
+                          col = meta_data)
+  
+  p <- ggplot(data_plot) + geom_point(aes(x=x, y=y, color=col)) + 
+    ggtitle(title) + theme_minimal()
+  
+  return(p)
+}
+
+UMAPdata <- umap(data)
+
+UMAP <- plot_representation(UMAPdata$layout[,1], 
+                    UMAPdata$layout[,2], 
+                    rep,
+                    "UMAP plot")
+
+print(UMAP)
+
+```
+
+**4. Describe the plot(s): compare where the samples from different experiments are located. Would you say that there are batch effects in the data set? Justify your answer.| [1]**  
+
+*Answer: *  In this UMAP plot, it looks like there is almost no batch effect, as the differently coloured points are homogeneously distributed. Only in the central region of the plot we see that there is some kind of cluster where the majority of the cells are coming from `rep3` and `rep4`.
+  
+  
+#### **2.3 Cell types [6.5]**
+
+**5. Perform a scaled PCA on the data set. Why is it failing in this case? | [0.5]**  
+
+```{r q2.3 5, error=TRUE}
+
+# Answer:
+scaled_pca <- stats::prcomp(data, scale=TRUE)
+
+```
+
+*Answer: *  The scaled PCA is failing because the dataset contains some observation values equal to 0. 
+  
+  
+**6. Modify the data so that you can performed a scaled PCA. If needed, remove some rows or columns. Provide numbers and comments on the procedure removing/modifying the data. | [0.5]**  
+  
+```{r q2.3 6}
+
+# Answer:
+print(dim(data))
+data=data[, colSums(data)>0] #removing the genes which are not expressed at all
+print(dim(data)) #we check that a lot of genes were removed (4153 - 2564 = 1589)
+
+```
+  
+**7. Perform the scaled PCA of the modified data. Plot the projected points using a different color for each repetition. Add a legend.| [1]**  
+  
+```{r q2.3 7}
+# Answer:
+scaled_pca <- stats::prcomp(data, scale=TRUE)
+
+library(factoextra)
+library(ggfortify)
+
+ggplot2::autoplot(scaled_pca, data = rep_data, colour = "rep") + theme_classic() + labs(title = "PCA Plot")
+factoextra::fviz_pca_ind(scaled_pca, geom = "point", col.ind = rep)
+
+```
+  
+**8. Give an interpretation for the first principal component. Justify your answer, possibly using plots and p-values if required. | [2]**  
+  
+```{r q2.3 8}
+
+# Answer:
+
+```
+
+*Answer: * On the first principal component we probably have different kind of ceels represented.
+
+  
+**9. Are all the replicates homogeneously distributed along the first principal component?  Does this confirm your previous answer regarding batch effects? Would it be neccessary to further normalize the data? | [0.5]**   
+
+*Hint: pay close attention to regions where the points are very dense*  
+*Answer: *  If we pay close attention to regions where the points are very dense, it looks like a lot of the points are colored of blue and green, so they are coming from `rep3` and `rep4`. It would be better to normalize the data to visualize a unbiased representation.
+
+**10. How many major cell types are there in _Hydra_?. If you believe that the data should be further normalized, then perform the normalization before the projection and justify your answer. Use a PCA projection and at least a UMAP or tSNE representations of the final (normalized or not) data. Provide a comment on the number of major cell types you get to identify. | [2]**  
+  
+```{r q2.3 10}
+
+# Answer:
+normdata = data/rowSums(data)
+pca_norm <- stats::prcomp(normdata, scale=TRUE)
+
+ggplot2::autoplot(pca_norm, data=rep_data, colour="rep") + theme_classic() + labs(title = "Normalized PCA Plot")
+
+normUMAPdata <- umap(normdata)
+
+normUMAP <- plot_representation(normUMAPdata$layout[,1], 
+                    normUMAPdata$layout[,2], 
+                    rep,
+                    "Normalized UMAP Plot")
+
+print(normUMAP)
+
+```
+
+*Answer: * After having normalized the data in order to remove any possible batch effect, we now see both in the PCA plot and in the UMAP plot that we have 4 main types of cells (4 different clusters). However, the clusters are much more defined in the UMAP plot. We wouldn't have been able to identify these clusters without having normalized the data.

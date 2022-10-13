@@ -1,0 +1,297 @@
+---
+title: "Data visualization: UMAP"
+output: html_document
+date: 24 November 2021
+---
+
+## Practical Session UMAP
+Please, complete all the code proposed and answer to questions. 
+
+You will find these on the slides as (#) and (Q). You are not expected to include your answer to the check questions (C) or (K) knowledge thoughts. These are only to guide your progress. 
+
+Change the code appropriately or add new lines if necessary.
+
+## Load some functions and init variables
+```{r}
+library(ggplot2)
+library(umap)
+library(Rtsne)
+
+plot_representation <- function(x_given, y_given, meta_data, title) {
+  data_plot <- data.frame(x = x_given, 
+                          y = y_given, 
+                          col = meta_data)
+  
+  p <- ggplot(data_plot) + geom_point(aes(x=x, y=y, color=col)) + 
+    ggtitle(title) + theme_classic()
+  
+  return(p)
+}
+
+saved_plots <- list()
+
+```
+
+## Load the data
+
+Load data into variables: Make use of any or read.delim, read.table, readlines or scan functions.
+
+```{r message=FALSE}
+
+
+# Read data
+P1_data = read.delim('P1.tsv.gz', row.names = 1)
+P2_data = read.delim('P2.tsv.gz', row.names = 1)
+
+## transpose data
+X1 = t(P1_data)
+X2 = t(P2_data)
+
+## Read metadata
+treat <- as.factor(readLines('treatment.txt'))
+```
+
+#### Initial representation: P1 data
+
+Create an initial representation only using `P1_data` and check items.
+
+```{r create_iris_UMAP, message=FALSE}
+
+## create UMAP
+p1_dataSet_UMAP <- umap::umap(X1)
+
+## Inspect objects and results generated
+names(p1_dataSet_UMAP)
+
+dim(p1_dataSet_UMAP$layout)
+dim(p1_dataSet_UMAP$data)
+
+names(p1_dataSet_UMAP$knn)
+
+names(p1_dataSet_UMAP$knn)
+head(p1_dataSet_UMAP$knn$indexes)
+dim(p1_dataSet_UMAP$knn$indexes)
+
+head(p1_dataSet_UMAP$knn$distances)
+dim(p1_dataSet_UMAP$knn$distances)
+
+names(p1_dataSet_UMAP$config)
+head(p1_dataSet_UMAP$config$n_neighbors)
+head(p1_dataSet_UMAP$config$min_dist)
+```
+
+```{r}
+## Create plot representation
+UMAP_plot1 <- plot_representation(p1_dataSet_UMAP$layout[,1], 
+                    p1_dataSet_UMAP$layout[,2], 
+                    treat,
+                    "UMAP: P1 dataset")
+
+print(UMAP_plot1)
+saved_plots[['UMAP_plot1']] = UMAP_plot1
+```
+
+**Q1**. What do you think about this representation?
+
+**A1**. We get very nice and distinct clusters, but we cannot make assumptions based on the distances between the points. 
+
+
+#### Add data to existing prediction
+```{r}
+dataSet_UMAP = predict(p1_dataSet_UMAP, X2)
+```
+
+Create plot:
+
+```{r}
+## Create plot representation
+UMAP_plot2 <- plot_representation(dataSet_UMAP[,1], 
+                    dataSet_UMAP[,2], 
+                    treat,
+                    "UMAP: P1 & P2 dataset: added")
+
+print(UMAP_plot2)
+saved_plots[['UMAP_plot2']] = UMAP_plot2
+
+
+UMAP_plot3 <- plot_representation(dataSet_UMAP[,1],
+                    dataSet_UMAP[,2],
+                    as.factor(rep(c("A","B"), each=96)), ## by experiment
+                    "UMAP: P1 & P2 dataset: added")
+
+print(UMAP_plot3)
+```
+
+**Q2**. Has it changed compared to P1 data alone? What do you think about this representation?
+
+**A2**. Yes, the resulting plot has changed, now we only obtain two unclear clusters representing the prediction of expression of our cells. We need to merge the two datasets and normalize in order to appropriately analyse the data. 
+
+
+### Merge data, normalize and re-run umap
+```{r}
+# Merge replicates
+X = rbind(X1,X2)
+X=X[, colSums(X)>0]
+Y = X/rowSums(X)
+
+## 
+merge_dataSet_UMAP = umap(Y)
+
+## Create plot representation
+UMAP_plot4 <- plot_representation(merge_dataSet_UMAP$layout[,1], 
+                    merge_dataSet_UMAP$layout[,2], 
+                    treat,
+                    "UMAP: P1 & P2 dataset Merged")
+
+print(UMAP_plot4)
+saved_plots[['UMAP_plot4']] = UMAP_plot4
+
+UMAP_plot5 <- plot_representation(merge_dataSet_UMAP$layout[,1],
+                    merge_dataSet_UMAP$layout[,2],
+                    as.factor(rep(c("A","B"), each=96)), ## by experiment
+                    "UMAP: P1 & P2 dataset Merged")
+
+print(UMAP_plot5)
+saved_plots[['UMAP_plot5']] = UMAP_plot5
+
+```
+
+**Q3**: Has it changed compared to P1 data alone or P1+P2? What do you think about this representation?
+
+```{r}
+
+library(gridExtra)
+gridExtra::grid.arrange(grobs=saved_plots) ## 
+```
+
+
+**A3**. Now that the two experiments are merged and normalized, we get a much more reasonable result, a plot where the clusters are very clearly showing how different the treated vs untreated cells are, and how different the dead and alive cells are. 
+
+
+
+#### Modify default parameters
+To create a custom configuration, we can make a copy of the object and update its fields. 
+
+```{r}
+custom.umap.config <- umap::umap.defaults
+```
+
+**Explore `n_neighbors`**:
+
+**Q4**: What is the default value of n_neighbours?
+
+**A4**. If we use the command `print(umap::umap.defaults)`, we get that the default value for `n_neighbours` is 15. 
+
+
+Create different UMAP with different `n_neighbors` values.
+```{r, error=TRUE, message=TRUE}
+list_plots <- list()
+
+for (n_neighbors_values in c(2,5,15,50,100,200)) {
+  print(paste0("UMAP n_neighbors=", n_neighbors_values))
+  
+  custom.umap.config$n_neighbors = n_neighbors_values
+
+  umap_n <- umap(Y, config = custom.umap.config)
+  
+  UMAP_plot <- plot_representation(umap_n$layout[,1], 
+                    umap_n$layout[,2], 
+                    treat,
+                    paste0("UMAP: P1 & P2 dataset: n_neighbours = ", n_neighbors_values))
+  
+  
+  print(UMAP_plot)
+}
+```
+
+**Q5**: What is the effect of modifying n_neighbours?
+
+**A5**. The `n_neighbours` parameter specifies the number of nearest points to each of the observations in the plot. When using low values for `n_neighbours` we get many clusters containing a few points, while when using higher values, we get just a few clusters with a lot of points, almost like in the first case we are looking at the smallest differces between each observation, while in the latter case we are taking a more general view over the dataset. 
+
+
+
+**Explore `min_dist`**:
+
+**Q6**: What is the default value of min_dist?
+
+**A6**. The default value for `min_dist` is 0.1. 
+
+
+
+Create different UMAP with different `n_neighbors` values.
+```{r}
+list_plots2 <- list()
+
+## set n_neighbours to default
+custom.umap.config$n_neighbors = umap::umap.defaults$n_neighbors
+
+for (min_dist_values in c(0.1,0.5,0.9)) {
+  print(paste0("UMAP min_dist=", min_dist_values))
+  
+  custom.umap.config$min_dist = min_dist_values
+
+  umap_n <- umap(Y, config = custom.umap.config)
+  
+  UMAP_plot <- plot_representation(umap_n$layout[,1], 
+                    umap_n$layout[,2], 
+                    treat,
+                    paste0("UMAP: P1 & P2 dataset: min_dist = ", min_dist_values))
+  
+  print(UMAP_plot)  
+} 
+```
+
+**Q7**: What is the effect of modifying min_dist?
+
+**A7**. The `min_dist` parameter defines how close points appear in the layout of the plot. Low values of `min_dist` lead to more tightly packed clusters, whereas larger values will lead to more loose clusters. 
+
+
+
+# Compare performance
+```{r}
+t0 <- Sys.time()
+pca_data <- prcomp(Y, scale. =TRUE)
+tf <- Sys.time()
+print(tf-t0)
+
+t1 <- Sys.time()
+tSNE_data <- Rtsne(Y, pca=TRUE)
+tf1 <- Sys.time()
+print(tf1-t1)
+
+t2 <- Sys.time()
+umap_data <- umap(Y)
+tf2 <- Sys.time()
+print(tf2-t2) 
+```
+
+**Q8**: Write some comments on the performance comparison between different techniques.
+
+**A8**. Comparing the time performance of the three studied techniques, we get that **tSNE** is a little faster than **PCA**, but the striking fact is that **UMAP** is very much faster than both of them (basically twice as fast!), while also being able to convey very nice results. 
+
+
+**Q9**: Write some comments and a comparison on the plots from different techniques.
+```{r}
+pca_plot <- plot_representation(pca_data$x[,1], 
+                    pca_data$x[,2],  treat,
+                    "PCA")
+
+print(pca_plot)
+
+tSNE_plot <- plot_representation(tSNE_data$Y[,1], 
+                    tSNE_data$Y[,2],  treat,
+                    "tSNE")
+
+print(tSNE_plot)
+
+UMAP_plot <- plot_representation(umap_data$layout[,1], 
+                    umap_data$layout[,2],  treat,
+                    "UMAP")
+
+print(UMAP_plot)
+```
+
+
+**A9**. Providing a plot using each of the three techniques can actually show us that the three of them bring similar results, with two clusters for *treated* cells and one cluster for *untreated* cells. In particular though, **PCA** and **UMAP** convey very similar results (both a little different from **tSNE**), nicely showing the amount of difference between treated and untreated cells on the y-axis and the amount of difference between dead and alive cells on the x-axis.
+
+

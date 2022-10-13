@@ -1,0 +1,520 @@
+---
+title: "**Final Exam <br><font color='#4CC3CD' size='5'>Data visualization (Course 2021/2022)**</font>"
+author: "<font color='#A8A8A8' size='3'>Bachelor’s Degree in Bioinformatics</font>"
+date: "<font color='#A8A8A8' size='3'>16 December 2021</font>"
+output:
+  html_document:
+    theme: yeti
+    css: https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.css
+    self_contained: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 6, fig.height = 4, fig.align = "center")
+library(ggplot2)
+library(shiny)
+library(plotly)
+library(dplyr)
+library(Rtsne)
+library(umap)
+```
+
+```{=html}
+<style>
+  .fig {width: 50%}
+  @import url(https://fonts.googleapis.com/css?family=Fira+Sans:300,300i,400,400i,500,500i,700,700i);
+  @import url(https://cdn.rawgit.com/tonsky/FiraCode/1.204/distr/fira_code.css);
+  @import url("https://use.fontawesome.com/releases/v5.10.1/css/all.css");
+</style>
+```
+<hr>
+
+<b><i>Directions</i>:</b> <b>1.</b> The complete Data visualization exam (parts A and B) will last a total of 3 hours. You may allocate your time as you wish, but it is strongly recommended spending 1.5h on each part. <b>2.</b> You may consult with any materials you wish. <b>3.</b> Deliver the Rmd with your answers to <a href="https://aula.esci.upf.edu/course/view.php?id=6261" target="_blank">Aul\@-ESCI</a>. <b>4.</b> Answers must be written in English. <b>5.</b> Plagiarism and cheating are forbidden and will result in failing the course Data Visualization with grade 0. <b>6.</b> Good luck!
+
+<hr>
+
+# **Part A: Data visualization**
+
+### **1. Short exercises and questions [6 points]**
+
+#### **Question 1**
+
+**Help your colleague to fix the following `ggplot2` calls and briefly explain them why they were wrong and what have you done to fix the problem [0.67 points each]**
+
+```{r q1.1, eval = FALSE}
+
+# I want to color the histogram bars with red color
+
+ggplot(iris, aes(Sepal.Width)) +
+    geom_histogram(aes(fill = "red"))
+
+# Answer:
+ggplot(iris, aes(Sepal.Width)) +
+    geom_histogram(fill = "red")
+
+# The `fill` argument needs to be outside of the `aes` function,
+# otherwise it will be recognized as a variable for grouping of the data
+
+```
+
+```{r q1.2, eval = FALSE}
+
+# I want to show each tree as an independent line and hide the legend
+
+ggplot(Orange, aes(age, circumference, colour = as.numeric(Tree))) +
+    geom_line()
+
+# Answer:
+ggplot(Orange, aes(age, circumference, colour = Tree)) +
+    geom_line() +
+  theme(legend.position = "none")
+
+# Using `as.numeric()` will group all the data together;
+# we need to leave the `Tree` variable as a factor so that
+# the `colour` option will automatically create a different line for each tree.
+# In order to hide the legend we can simply use
+# `theme(legend.position = "none")`
+
+```
+
+```{r q1.3, eval = FALSE}
+
+# The scales = "free_x" has no effect, why? I want to hide the empty spaces of the x axis...
+
+ggplot(mtcars) +
+geom_bar(aes(gear)) +
+facet_grid(mtcars$am~., scales = "free_x")
+
+# Answer:
+ggplot(mtcars) +
+geom_bar(aes(gear)) +
+facet_grid(mtcars$am~., scales = "free_x")
+```
+
+#### **Question 2**
+**Reproduce the two versions of the following figure using the `mtcars` dataset (1 point simple version, 1 point complete version). Simple version only uses some of the following function types: `ggplot`, `geom_*`, `stat_*` and `facet_*`. Complete version modifies simple version with any of the remaining functions in the `ggplot2` package.**
+
+<i class="fa fa-key"></i> **Hint**: colour codes for the complete version are #F65058FF, #FBDE44FF, #28334AFF.
+
+Simple version:
+<br>
+<center>
+  ![simple](http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p1_20212021_12_6D11_24_56.png){.fig}
+</center>
+
+```{r q2.1}
+
+# Answer:
+ggplot(mtcars, aes(wt, mpg, colour = as.factor(gear), size = cyl)) +
+  geom_point() +
+  facet_grid(.~am)
+
+```
+
+<br>
+Complete version:<br>
+<center>
+  ![complete](http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p2_20212021_12_6D11_27_6.png){.fig}
+</center>
+
+```{r q2.2}
+
+# Answer:
+ggplot(mtcars, aes(wt, mpg, colour = as.factor(gear), size = cyl)) +
+  geom_point() +
+  facet_grid(.~am) +
+  labs(title = "Automatic vs. Manual Cars",
+       x = "Weight",
+       y = expression(frac("Miles", "Gallon")),
+       caption = "Transmission (0 = automatic, 1 = manual)",
+       colour = "Gear",
+       size = "Number of Cylinders") +
+  scale_colour_manual("Gear", values = c("#F65058FF", "#FBDE44FF", "#28334AFF")) +
+  theme_bw()
+
+```
+
+#### **Question 3**
+
+**Write the code or propose a way to save the following figure in a raster format and in a vector format [0.5 points]. What are the advantages of a plot saved using a vector format? [0.5 points]**
+
+```{r q3.1, eval = FALSE}
+
+ggplot(iris, aes(Species, Petal.Length)) + 
+    geom_point() + 
+    stat_summary(fun.y = "mean", geom = "point",
+                 colour = "red", size = 5)
+
+# Answer:
+p <- ggplot(iris, aes(Species, Petal.Length)) + 
+    geom_point() + 
+    stat_summary(fun.y = "mean", geom = "point",
+                 colour = "red", size = 5)
+
+library(svglite)
+ggsave("plot.svg", p, width = 6, height = 4) #saving in a raster format
+ggsave("plot.png", p, width = 6, height = 4) #saving in a vector format
+
+# Using a raster format will allow a much better resolution when zooming in the image,
+# even though the file cannot be compressed a lot
+```
+
+#### **Question 4**
+
+**What aspects would you take into account for creating a "ready-to-publish" figure? (maximum 100 words) [1 point]**
+
+::: {style="background-color:#F0F0F0"}
+Answer: Good resolution, a small data-ink ratio, correct labels and annotations, the appropriate color palette to avoid visualization problems for colorblind people, file size.
+:::
+
+<hr>
+
+### **2. Problem [4 points]**
+
+**The `msleep` dataset contains information about the sleeping patterns of 83 species of mammals with 4 different diet types (carnivore, herbivore, insectivore and omnivore). In this problem you will need to create two different static figures using `ggplot2`, and then create an interactive version using `plotly` and `shiny`.**
+
+#### **Static figures**
+
+**Sleeping times vary widely, from just 1.9 hours for a Giraffe to the 19.9 hours for the Little brown bat. Sleep has been proposed to relate to metabolic rate and body weight. In particular, a strong negative correlation is observed between the logarithm of the sleep/awake time ratio and that of the body mass, that can be modeled with a simple linear regression:**
+
+```{r transformed-var}
+
+# We create the transformed variables
+msleep$log10_sleep_awake <- log10(msleep$sleep_total/msleep$awake)
+msleep$log10_bodywt <- log10(msleep$bodywt)
+
+# We perform a simple linear regression
+regression_model <- lm(data = msleep,
+                       formula = log10_sleep_awake ~ log10_bodywt)
+
+```
+
+**where `regression_model$coefficient[[1]]` is the intercept and `regression_model$coefficient[[2]]` the slope.**
+
+**In the first figure, represent the correlation between these two variables (the logarithm of the sleep/awake time ratio and that of the body mass) in a scatter plot including raw data, summaries and annotations [0.5 points] and with publication-quality details [0.35 points]. Interpret the results [0.15 points].**
+
+```{r problem1}
+
+# Answer:
+p1 <- ggplot(msleep, aes(log10_bodywt, log10_sleep_awake)) +
+  geom_point() +
+  geom_smooth() +
+  geom_vline(xintercept = 0, linetype="3313") +
+  geom_abline(intercept = regression_model$coefficient[[1]],
+              slope = regression_model$coefficient[[2]],
+               color="red", linetype="55") +
+  labs(title = "Mammals Sleeping Patterns",
+       x = "log10(Body Weight)",
+       y = "log10(Sleep/Awake Time Ratio)",
+       caption = "Source: msleep") +
+  theme_minimal()
+p1
+
+# The plot confirms that there is a negative correlation between
+# the logarithmic scales of mammals body weights and their sleep/awake time ratio
+# as the regression line has a slope which is negative and not close to 0.
+
+```
+
+**Theory predicts that the fraction of sleeping time spent in REM phase should be constant, around 3/16, and independent of body mass.**
+
+**For the second figure, represent a scatter plot of the fraction of sleep spent in REM (`rem_fraction`) against the logarithm of the body weight. Show again raw data, summaries and annotations [0.5 points] and finish it with publication-quality details [0.35 points]. Interpret the results [0.15 points].**
+
+```{r problem2, warning=FALSE}
+
+# We create the extra variable
+msleep$rem_fraction <- msleep$sleep_rem/msleep$sleep_total
+
+# Answer:
+regression_model2 <- lm(data = msleep,
+                       formula = rem_fraction ~ log10_bodywt)
+
+p2 <- ggplot(msleep, aes(log10_bodywt, rem_fraction)) +
+  geom_point() +
+  geom_smooth() +
+  geom_vline(xintercept = 0, linetype="3313") +
+  geom_abline(intercept = regression_model2$coefficient[[1]],
+              slope = regression_model2$coefficient[[2]],
+               color="red", linetype="55") +
+  labs(title = "Mammals Sleeping Patterns",
+       x = "log10(Body Weight)",
+       y = "REM Fraction",
+       caption = "Source: msleep") +
+  theme_minimal()
+p2
+
+# Contrastingly from the previous plot, this new one shows that
+# there is no correlation between the REM fraction of sleep of mammals and their body weight.
+
+```
+
+#### **Interactive visualizations**
+
+**Transform the previous two static plots into their interactive versions using the `plotly` package. [0.5 points]**
+
+```{r problem3}
+
+# Answer:
+library(plotly)
+ggplotly(p1)
+ggplotly(p2)
+
+```
+
+##### **Choose one of this two `shiny` applications (A or B):**
+
+**A. Using the two static versions of your plots, create a linked-plot interactive `shiny` application where a brush action over of one of the static plots highlights the same observations in the other plot [1 point]. Print a table with the brushed points [0.5 points]. Make sure that the `shiny` application has a title and your name on it.**
+
+```{r problem4a}
+
+# Answer:
+
+```
+
+**B. Create a shiny application that allows you to choose a group of animals (one or more) according to its type of diet (`vore` variable) using the input widget of your choice and visualize the correlation that exist between the logarithm of the sleep/awake time ratio and that of the body mass, of that group of animals [1 point]. Print a table with the information of the selected group(s) of animals [0.5 points]. Make sure that the `shiny` application has a title and your name on it.**
+
+<i class="fa fa-key"></i> **Hint**: Use `dplyr` R package for filtering the `msleep` dataset according to the user input selection:
+
+          filteredData <- msleep %>%
+                filter(vore %in% input$checkGroupID)
+
+```{r problem4b}
+
+# Answer:
+library(shiny)
+library(dplyr)
+
+ui <- fluidPage(
+  titlePanel("Interactive Visualisation of Mammals Sleeping Patterns"),
+  strong("Alessandro Giulivo"), br(), br(),
+  
+  sidebarLayout(
+    sidebarPanel(
+      checkboxGroupInput("voreInput", "vore",
+                     choices = c("carni", "herbi", "omni"),
+                     selected = c("carni", "herbi", "omni"))
+      ),
+    
+    mainPanel(plotOutput("plot"), br(), br(),
+              textOutput("number"), br(), br(),
+              tableOutput("results"))
+    
+  )
+  
+  
+)
+
+server <- function(input, output) {
+  output$plot <- renderPlot({
+    
+    filteredData <- msleep %>%
+                filter(vore %in% input$voreInput
+      )
+    
+    ggplot(filteredData, aes(log10_bodywt, log10_sleep_awake)) +
+  geom_point() +
+  geom_smooth() +
+  geom_vline(xintercept = 0, linetype="3313") +
+  labs(title = "Sleep/Awake Time Ratio vs Body Weight",
+       y = "log10(Body Weight)",
+       x = "log10(Sleep/Awake Time Ratio)",
+       caption = "Source: msleep") +
+  theme_minimal()
+  })
+  
+  output$number <- renderText({
+    filteredData <- msleep %>%
+                filter(vore %in% input$voreInput
+                )
+    paste("Number of results found =", nrow(filteredData))
+  })
+  
+  output$results <- renderTable({
+    filteredData <- msleep %>%
+                filter(vore %in% input$voreInput
+      )
+    filteredData
+  })
+
+}
+
+shinyApp(ui = ui, server = server)
+
+```
+
+<hr>
+
+# **Part B: Dimensionality Reduction**
+
+### **1. Background**
+  
+We propose to study *Hydra*, a genus of small fresh-water animals that looks like plants and that attach to the surface of fixed objects. *Hydra* has attracted the attention of biologists because it can fully regenerate from just a few cells.  
+  
+### **2. Problem**   
+  
+We have a data set of single-cell gene expression from *Hydra*. To generate the data, animals were dissociated to single cells and the mRNA of each cell were sequenced. We will use this data set to know how many different cell types exist in *Hydra*.  
+  
+Answer the questions below with R code. When prompted to, comment your results in English. When a figure is required, also provide the plot in your answer.  
+  
+#### **2.1 Load the data [1]**
+
+**1. Load the data called hydra_scRNA.txt in your R session. Make sure that the dimensions are 793 x 4153. | [0.5]**  
+
+```{r q2.1 1}
+
+# Answer:
+data <- read.delim('hydra_scRNA.txt.gz')
+dim(data)
+
+```
+
+The rows are individual cells, the columns are _Hydra_ genes. The entries of the data set are gene expression score. 
+
+There are five replicates in this dataset (the samples were analyzed five times in different repetitions). Load the replicate information from file `rep.txt` as a vector.
+
+```{r q2.1 2, eval=FALSE}
+
+# Answer:
+rep <- as.vector(readLines('rep.txt'))
+rep_data <- data.frame(row.names = rownames(data), 
+                        rep=rep)
+```
+
+**2. How many samples are included in each replicate | [0.5]**  
+```{r q2.2 1}
+
+# Answer:
+summary(as.factor(rep))
+
+```
+
+*Answer: *  
+```{r  q2.2 2}
+
+# Answer:
+# There are 96 samples in replicate 1,
+# 105 samples in replicate 2,
+# 216 samples in replicate 3,
+# 257 samples in replicate 4,
+# 119 samples in replicate 5.
+
+```
+
+  
+#### **2.2 Batch effects [2.5]**
+  
+
+**3. Use either UMAP or t-SNE to project the points on a 2D space. Plot the projected points using a different color for each repetition. Add a legend. | [1,5]**  
+
+```{r q2.2 3}
+
+# Answer:
+library(umap)
+
+plot_representation <- function(x_given, y_given, meta_data, title) {
+  data_plot <- data.frame(x = x_given, 
+                          y = y_given, 
+                          col = meta_data)
+  
+  p <- ggplot(data_plot) + geom_point(aes(x=x, y=y, color=col)) + 
+    ggtitle(title) + theme_minimal()
+  
+  return(p)
+}
+
+UMAPdata <- umap(data)
+
+UMAP <- plot_representation(UMAPdata$layout[,1], 
+                    UMAPdata$layout[,2], 
+                    rep,
+                    "UMAP")
+
+print(UMAP)
+
+
+```
+
+**4. Describe the plot(s): compare where the samples from different experiments are located. Would you say that there are batch effects in the data set? Justify your answer.| [1]**  
+
+*Answer: *  
+  
+  
+#### **2.3 Cell types [6.5]**
+
+**5. Perform a scaled PCA on the data set. Why is it failing in this case? | [0.5]**  
+
+```{r q2.3 5, error=TRUE}
+
+# Answer:
+scaled_pca <- stats::prcomp(data, scale=TRUE)
+
+```
+
+*Answer: *  The scaled PCA is failing because the dataset contains some observation values equal to 0. 
+  
+  
+**6. Modify the data so that you can performed a scaled PCA. If needed, remove some rows or columns. Provide numbers and comments on the procedure removing/modifying the data. | [0.5]**  
+  
+```{r q2.3 6}
+
+# Answer:
+print(dim(data))
+data=data[, colSums(data)>0] #removing the genes which are not expressed at all
+print(dim(data)) #we check that a lot of genes were removed (4153 - 2564 = 1589)
+
+```
+  
+**7. Perform the scaled PCA of the modified data. Plot the projected points using a different color for each repetition. Add a legend.| [1]**  
+  
+```{r q2.3 7}
+
+# Answer:
+scaled_pca <- stats::prcomp(data, scale=TRUE)
+
+library(factoextra)
+library(ggfortify)
+
+ggplot2::autoplot(scaled_pca, data = rep_data, colour = "rep") + theme_classic()
+factoextra::fviz_pca_ind(scaled_pca, geom = "point", col.ind = rep)
+
+```
+  
+**8. Give an interpretation for the first principal component. Justify your answer, possibly using plots and p-values if required. | [2]**  
+  
+```{r q2.3 8}
+
+# Answer:
+
+```
+
+*Answer: *
+
+  
+**9. Are all the replicates homogeneously distributed along the first principal component?  Does this confirm your previous answer regarding batch effects? Would it be neccessary to further normalize the data? | [0.5]**   
+
+*Hint: pay close attention to regions where the points are very dense*  
+*Answer: *  
+
+**10. How many major cell types are there in _Hydra_?. If you believe that the data should be further normalized, then perform the normalization before the projection and justify your answer. Use a PCA projection and at least a UMAP or tSNE representations of the final (normalized or not) data. Provide a comment on the number of major cell types you get to identify. | [2]**  
+  
+```{r q2.3 10}
+
+# Answer:
+normdata = data/rowSums(data)
+pca_norm <- stats::prcomp(normdata, scale=TRUE)
+
+ggplot2::autoplot(pca_norm, data=rep_data, colour="rep") + theme_classic()
+
+normUMAPdata <- umap(normdata)
+
+normUMAP <- plot_representation(normUMAPdata$layout[,1], 
+                    normUMAPdata$layout[,2], 
+                    rep,
+                    "UMAP")
+
+print(normUMAP)
+
+```
+
+*Answer: *
+  

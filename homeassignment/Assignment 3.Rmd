@@ -1,0 +1,203 @@
+---
+title: "Assignment 3"
+author: "Alessandro Giulivo, Francesca Rinaldi, Martina Monciotti"
+date: "11/15/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(ggfortify)
+library(factoextra)
+library(Rtsne)
+library(dplyr)
+```
+Question 1
+```{r}
+#Read data
+setwd("C:/Users/aless/Desktop/Bioinformatics/Erasmus BCN/Data Visualisation/homeassignment")
+P3<- read.delim("P3.tsv.gz", row.names=1)
+P4<- read.delim("P4.tsv.gz", row.names=1)
+P5<- read.delim("P5.tsv.gz", row.names=1)
+
+#Check data
+head(P3, 5)
+head(P4, 5)
+head(P5, 5)
+
+#Alternatives
+#P3<- read.table(gzfile("P3.tsv.gz", "rt"), header= TRUE)
+#P4<- read.table(gzfile("P4.tsv.gz", "rt"), header= TRUE)
+#P5<- read.table(gzfile("P5.tsv.gz", "rt"), header= TRUE)
+```
+
+Question 2
+```{r}
+treat<- read.delim("samplesheet.tsv", row.names=1)
+#treat <- as.factor(readLines("samplesheet.tsv"))
+#Alternatives
+#treat<- read.table(("samplesheet.tsv", "rt"), header= TRUE))
+
+table(treat)
+```
+
+There are 2 kinds of cells (one infected with HIV and one with a latent virus), each one is treated with DMSO, SAHA and PMA. This creates 6 different combinations, the table above shows the number of cells in each condition.
+
+Question 3
+```{r}
+X3 <- t(P3)
+X4 <- t(P4)
+X5 <- t(P5)
+
+X1 = rbind(X3, X4, X5)
+
+data <- data.frame(row.names= rownames(X1), experiment= as.factor(rep(c("A", "B", "C"), each=96)), treatment=treat)
+
+colnames(data)<- c("experiment", "treatment")
+
+#PCA
+PCA = stats::prcomp(X1)
+plot(PCA$x)
+#coloring by treatment
+#using autoplot
+ggplot2::autoplot(PCA, data = data, colour = "treatment") + theme_classic()
+#using factoextra
+factoextra::fviz_pca_ind(PCA, geom = "point", col.ind = data$treatment)
+#coloring by experiment
+#using autoplot
+ggplot2::autoplot(PCA, data = data, colour = "experiment") + theme_classic()
+#using factoextra
+factoextra::fviz_pca_ind(PCA, geom = "point", col.ind = data$experiment)
+
+#creating scaled PCA
+print(dim(X1))
+X1=X1[, colSums(X1)>0] ## tip: rowSums > 0
+print(dim(X1))
+pca_res_scaled <- stats::prcomp(X1, scale=TRUE)
+#colored by treatment
+ggplot2::autoplot(pca_res_scaled, data = data, colour = "treatment") + theme_classic()
+#colored by experiment
+ggplot2::autoplot(pca_res_scaled, data = data, colour = "experiment") + theme_classic()
+
+#creating normalized PCA
+Y1 = X1/rowSums(X1)
+normpca <- stats::prcomp(Y1, scale=TRUE)
+#colored by experiment
+plot(normpca$x, pch=19, col=data$experiment)
+#colored by treatment, using autoplot
+ggplot2::autoplot(normpca, data=data, colour="treatment") + theme_classic()
+
+```
+DMSO is the control and it's very similar to PMA, meaning that PMA doesn't have a significant effect. On the other hand, SAHA is very different from both of them, meaning that it has a significant effect. There is no batch effect, because in the graph colored by experiment the samples are not clustered based on the experiment that they're part of. However, we scaled the PCA and the scaled PCAs are more precise
+
+```{r}
+#tSNE
+tsne1 <- Rtsne(X1)
+
+## Check results generated
+names(tsne1)
+head(tsne1$Y)
+
+tsne_data <- as.data.frame(tsne1$Y)
+tsne_data$experiment <- data$experiment
+tsne_data$treatment <- data$treatment
+
+## ggplot
+ggplot(tsne_data, aes(x=V1, y=V2)) + 
+  geom_point(aes(color=treatment, shape=experiment)) +
+  scale_shape_manual(values = c(3,17, 6)) +
+  ggtitle("tSNE 2D plot") + xlab("tSNE1") + ylab("tSNE2") + 
+  theme_classic()
+
+## Normalized tSNE
+X1=X1[, colSums(X1)>0]
+Y = X1/rowSums(X1)
+tSNE_norm <- Rtsne(Y, pca=TRUE)
+tsne_data2 <- as.data.frame(tSNE_norm$Y)
+tsne_data2$Experiment <- data$experiment
+tsne_data2$Treatment <- data$treatment
+## ggplot
+tSNE2 <- ggplot(tsne_data2, aes(x=V1, y=V2)) + 
+  geom_point(aes(color=Treatment, shape=Experiment)) +
+  scale_shape_manual(values = c(3,17,6)) +
+  ggtitle("tSNE 2D plot: RNAseq normalization") + xlab("tSNE1") + ylab("tSNE2") + theme_classic() 
+print(tSNE2)
+```
+
+
+Question 4
+```{r}
+#changing perplexity
+set.seed(123) ## allows us to reproduce results
+
+list_plots <- list()
+for (p_value in c(1, 5, 10, 25, 50)) {
+  print(paste0("tSNE perplexity=", p_value))
+  
+  ## Default parameters for Rtsne
+  tsne_p <- Rtsne(X1, perplexity = p_value)
+
+  tsne_data2 <- as.data.frame(tsne_p$Y)
+  tsne_data2$Treatment <- data$treatment
+  tsne_data2$Experiment <- data$experiment
+
+  ## ggplot
+  plot_p <- ggplot(tsne_data2, aes(x=V1, y=V2)) + 
+    geom_point(aes(color=Treatment, shape=Experiment)) +
+    scale_shape_manual(values = c(3,17,6)) +
+    ggtitle(paste0("tSNE 2D plot: perplexity=", p_value)) + xlab("tSNE1") + ylab("tSNE2") + 
+    theme_classic() 
+
+  print(plot_p)
+  
+  # alternative: save plots in list_plots
+  list_plots[[paste0("perp_", p_value)]] = plot_p
+} 
+#changing max_iterations
+set.seed(123) ## allows us to reproduce results
+
+for (max_iter in c(1, 10, 100, 500, 1000)) {
+  tsne <- Rtsne(X1)
+
+  tsne_data <- as.data.frame(tsne$Y)
+  tsne_data$Experiment <- data$experiment
+  tsne_data$Treatment <- data$treatment
+  
+  library(ggplot2)
+  p <- ggplot(tsne_data, aes(x=V1, y=V2)) + 
+   geom_point(aes(color=Treatment, shape=Experiment)) +
+   scale_shape_manual(values = c(3,17,6)) +
+   ggtitle(paste("tSNE 2D plot: iterations =", max_iter)) + xlab("tSNE1") + ylab("tSNE2") + 
+   theme_classic()
+  print(p)
+}
+```
+
+In the previous plots we show how increasing the perplexity or the iterations numbers for a tSNE can generate more dense and defined and more distinct clusters, respectively.
+
+
+QUESTION 5
+
+No, it is pretty clear from both the PCA and the tSNE graphs that SAHA and PMA have a different effect on the cells as the points associated to each drug are grouped very distinctly in two separate clusters. In particular, from the PCA plot we see that PMA treated cells are observed to be closer in similarity to DMSO (control) cells, so we might assume that PMA has a smaller effect than SAHA.
+
+
+QUESTION 6
+
+The PC1 separates dead from alive cells, meanwhile PC2 separates differently tretated cells. On the right we have cells with low expression of genes, on the left with high expression.  
+  
+  
+---------------------------------------------------------------------------------------------------------------
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+

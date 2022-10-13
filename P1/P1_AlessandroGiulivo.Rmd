@@ -1,0 +1,433 @@
+---
+title: "**Data visualization in R**<br><font color='#A8A8A8' size='5'>First steps with `ggplot2`</font><img src='https://www.construction21.org/espana/data/sources/users/8/images/logoesci-fons-blanc.png' style='position:absolute;top:0px;left:0px;' width='10%'/>"
+author: "Alessandro Giulivo"
+date: "28 September 2021"
+output:
+  prettydoc::html_pretty:
+    theme: leonids 
+    highlight: github
+        
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 6, fig.height = 4)
+# install.packages("prettydoc")
+```
+
+<style>
+  @import url(https://fonts.googleapis.com/css?family=Fira+Sans:300,300i,400,400i,500,500i,700,700i);
+  @import url(https://cdn.rawgit.com/tonsky/FiraCode/1.204/distr/fira_code.css);
+  @import url("https://use.fontawesome.com/releases/v5.10.1/css/all.css");
+  
+  body {
+    font-family: 'Fira Sans','Droid Serif', 'Palatino Linotype', 'Book Antiqua', Palatino, 'Microsoft YaHei', 'Songti SC', serif;
+  }
+  
+  /* Make bold syntax compile to RU-red */
+  strong {
+    color: #cc0033;
+  }
+</style>
+
+
+
+## Introduction
+
+The following examples will walk you through the basic components of the `ggplot2` grammar. The examples use data from the `datasets` package, which is already loaded by default in the `R` session, as well as some data sets loaded with `ggplot2` package. `ggplot2` requires data to be stored in data frames and in a **long format** (one observation per row and one variable per column). In some cases, the **wide format** is also used. For example, `mtcars`dataset is in **wide format**`:
+
+```{r}
+head(mtcars)
+```
+
+where each column represents a different variable.
+
+### Organization of the practical
+
+You will see different icons through the document, the meaning of which is:
+
+&emsp;<i class="fas fa-info-circle"></i>: additional or useful information<br>
+&emsp;<i class="fas fa-search"></i>: a worked example<br>
+&emsp;<i class="fa fa-cogs"></i>: a practical exercise<br>
+&emsp;<i class="fas fa-comment-dots"></i>: a space to answer the exercise<br>
+&emsp;<i class="fa fa-key"></i>: a hint to solve an exercise<br>
+&emsp;<i class="fa fa-rocket"></i>: a more challenging exercise<br><br>
+
+<i class="fas fa-info-circle"></i> `ggplot2` is a data visualization package for the statistical programming language R. Created by Hadley Wickham in 2005, `ggplot2` is an implementation of Leland Wilkinson's Grammar of Graphics — a general scheme for data visualization which breaks up graphs into semantic components such as scales and layers. We will further learn about `ggplot2` in our next theoretical session.
+
+
+----------------------------------------------------------------------------------
+
+## **<i class="fas fa-search"></i> Example 1** | Creating a scatter plot
+
+### **1a** | Basic scatter plot
+
+For the first problem we want to represent the relationship between the variables `wt` (weight) and `mpg` (miles/gallon) from the `mtcars` data frame. 
+
+<i class="fas fa-info-circle"></i> The data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973–74 models). <font color=" #A8A8A8">You can type `?mtcars` in the `R` console to read a description of the data.</font>
+
+To represent any graph in `ggplot2` we need two basic functions that are combined with a `+` sign.
+
+
+```{r scatter-ggplot2, fig.align='center'}
+# Run install.packages("ggplot2") if ggplot2 is not yet installed
+library(ggplot2)
+ggplot(data = mtcars, mapping = aes(x = wt, y = mpg)) + 
+  geom_point()
+```
+
+The variables that we want to represent are wrapped within an `aes()` function, that specifies the **_mapping_** between the variables and the **_aesthetic attributes_** (in this case we map them to spatial positions, `x` and `y`). We call the variables directly by their names, because we also pass the entire data frame to the call with the data argument, so `ggplot` knows were to get them from. Finally, we need to add the **_geometric object_** we want to represent. In this case, points.
+
+### **1b** |  Represent extra variables
+
+Another variable in the data indicates the number of cylinders of the car engines (`cyl`). There are cars with 4, 6 or 8 cylinders.
+
+```{r table-cylinders}
+table(mtcars$cyl)
+```
+
+Let's say we want to represent the different types of cylinders in different colours. In this case we want to use `cyl` as a categorical variable, distinguishing groups rather than indicating a value in a continuous scale. For that, we need to change its class before giving it to `ggplot` using the `factor()` function.
+
+```{r groups-ggplot2, fig.align='center'}
+# First we check the class of cyl
+class(mtcars$cyl)
+# Because it is numeric, let's make cyl a factor so that we represent it as a categorical variable.
+# We create a new variable in the dataframe, cyl_f, that is cyl converted to factor
+mtcars$cyl_f <- factor(mtcars$cyl)
+
+ggplot(data = mtcars, mapping = aes(x = wt, y = mpg, colour = cyl_f)) + 
+  geom_point()
+```
+
+<i class="fas fa-info-circle"></i> Note that `ggplot` adds a **legend** by default for all the variables that have been mapped to some aesthetic attribute. This way we can read all the variables without extra effort.
+
+
+### <i class="fa fa-cogs"></i> Exercise
+
+Try mapping `cyl_f` to another aesthetic attribute instead of `colour`, such as `shape` or `size`.
+
+```{r answer1.1, fig.align='center'}
+ggplot(data = mtcars, mapping = aes(x = wt, y = mpg, shape = cyl_f)) + 
+  geom_point()
+```
+
+
+What happens if you map a continuous variable such as `qsec`, instead of `cyl`, to `colour`? And to `shape`?
+
+<div style="background-color:#F0F0F0">
+##### &emsp;<i class="fas fa-comment-dots"></i> Answer:
+##### &emsp;<i class="fas fa-comment-dots"></i> When mapping a continuous variable such as 'qsec' to 'colour', we visualize a gradient of colours representing the continuous values of the variable.
+##### &emsp;<i class="fas fa-comment-dots"></i> When mapping it to the 'shape' attribute instead, we get an error 
+&emsp;
+</div>
+
+```{r answer1.2, fig.align='center'}
+ggplot(data = mtcars, mapping = aes(x = wt, y = mpg, colour = qsec)) + 
+  geom_point()
+
+#ggplot(data = mtcars, mapping = aes(x = wt, y = mpg, shape = qsec)) + 
+  #geom_point()
+```
+
+
+
+----------------------------------------------------------------------------------
+
+## <i class="fas fa-search"></i> **Example 2** | Creating a bar plot
+
+### **2a** | Basic bar plot
+
+We now want to summarise our data in a simple bar plot representing the number of cars in each cylinder category. However, the number of cars with 4 cylinders is not a piece of information present in the data set, for example. To know the number it is necessary to count the rows where `cyl = 4`. 
+
+`ggplot2` is capable to do simple summary operations with the input variables, refered as **__statistical tranformations__**. One of them is to count the occurrences of each value in a variable. And `geom_bar` function happen to use the `count` statistical transformation by default on the variable mapped to the `x` axis.
+
+```{r barplot-ggplot2, fig.align='center'}
+ggplot(data = mtcars, mapping = aes(x = cyl)) +
+  geom_bar()
+
+# # The same as
+# ggplot(data = mtcars, mapping = aes(x = cyl)) +
+#   geom_bar(stat = "count")
+```
+
+If we had a precomputed data frame with `cyl` and `number_of_cars` instead, we could pass `number_of_cars` variable to `geom_col` function, that by default takes the variables mapped to `x` and `y` without transformation. 
+
+```{r barplot-table, fig.align='center'}
+# Let's create the data frame
+counts_by_cyl_data_frame <- as.data.frame(table(mtcars$cyl))
+names(counts_by_cyl_data_frame) <- c("cyl", "number_of_cars")
+
+ggplot(data = counts_by_cyl_data_frame, mapping = aes(x = cyl, y = number_of_cars)) +
+  geom_col()
+```
+
+Alternatively, we could remove the default statistical transformation of `geom_bar` with `stat = "indentity"` and use the precomputed data frame.
+
+```{r barplot-identity, fig.align='center'}
+# # The same as
+# ggplot(data = counts_by_cyl_data_frame, mapping = aes(x = cyl, y = number_of_cars)) +
+#   geom_bar(stat = "identity")
+```
+
+
+### **2b** | Groups and position
+
+We have seen in the scatter plot example how to represent groups encoded in extra variables as colours. Say we now want to show transmission type (`am`) in the bar plot, in addition to the number of cylinders. We can map `am` to the filling colour of the bars, `fill`. (`colour` would change the edges of the rectangles.)
+
+```{r groups-bar, fig.align='center'}
+# First we make am factor, and we can change the 0/1 notation for a more informative notation: automatic/manual
+mtcars$am_f <- factor(mtcars$am, levels = c(0, 1), labels = c("automatic","manual"))
+
+ggplot(data = mtcars, mapping = aes(x = cyl, fill = am_f)) +
+  geom_bar()
+```
+
+Each geometric object in `ggplot2` also has a **__position__** argument that controls how groups are arranged. In `geom_bar` the default position is to stack any groups. We can change it for a side-by-side position with `position = "dodge"`.
+
+```{r position-bar-ggplot2, fig.align='center'}
+ggplot(data = mtcars, mapping = aes(x = cyl, fill = am_f)) +
+  geom_bar(position = "dodge")
+```
+
+### <i class="fa fa-cogs"></i> Exercise
+
+Which is the `position` argument in the `ggplot2` bar plot that standardises the bars to the same height? Update the plot above with the new position adjustment.
+
+<div style="background-color:#F0F0F0">
+##### &emsp;<i class="fas fa-comment-dots"></i> Answer:
+##### &emsp;<i class="fas fa-comment-dots"></i> The 'position' argument that standardises the bars to the same height is "fill"
+&emsp;
+</div>
+
+```{r positions-ggplot2 answer2.1, fig.align='center'}
+ggplot(data = mtcars, mapping = aes(x = cyl, fill = am_f)) +
+  geom_bar(position = "fill")
+```
+
+Which position adjustment would you choose if you still wanted to compare the total amount of cars with each cylinder category? And if you were interested in knowing the relative abundance of each type of transmission?
+
+<div style="background-color:#F0F0F0">
+##### &emsp;<i class="fas fa-comment-dots"></i> Answer:
+##### &emsp;<i class="fas fa-comment-dots"></i> If you wanted to compare the total amount of cars with each cylinder category, the position adjustment you should choose is the default "stack" attribute; instead if you were interested in knowing the relative abundance of each type of transmission, the position adjustment you should choose is "fill"
+&emsp;
+</div>
+
+----------------------------------------------------------------------------------
+
+## <i class="fas fa-search"></i> **Example 3** | Showing the distribution of a variable
+
+### **3a** | Simple histogram
+
+Now we have a new data set called `iris` and we need to understand the distribution of some of its continuous variables. A good place to start is a histogram, that represents the number of observations in different ranges as bars. 
+
+<i class="fas fa-info-circle"></i> Note that histograms deal with _continuous_ variables while bar plots with _discrete_, but are sometimes [confused](https://www.google.com/search?q=histograms+and+bar+graphs+difference).
+
+The function that we need is called `geom_histogram` and has the statistical transformation `bin` by default. In this case, `bin` divides the variable mapped to `x` in ranges and counts the number of values in each bin. The number of bins is controlled with the argument `binwidth`.
+
+```{r histogram, fig.align='center'}
+ggplot(data = iris, mapping = aes(x = Sepal.Width)) +
+  geom_histogram(binwidth = 0.1)
+```
+
+### **3b** | Multiple histograms
+
+`iris` data contains information about three species of [iris](https://en.wikipedia.org/wiki/Iris_(plant)): _setosa_, _versicolor_ and _virginica_. To see the distribution of the different species we can try to map the species to the filling colour. That's easy with `ggplot2`!
+
+```{r histogram-fill, fig.align='center'}
+ggplot(data = iris, mapping = aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.1) 
+```
+
+Stacked histograms are difficult to interpret and three separated subplots could actually work better. `ggplot2` provides a simple way of creating small multiples or __facets__ with the functions `facet_grid` and `facet_wrap`.
+
+```{r facets, fig.align='center'}
+ggplot(data = iris, mapping = aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.1) +
+  facet_grid(Species ~ .)
+```
+
+### <i class="fa fa-cogs"></i> Exercise
+
+Experiment with `facet_grid` and `facet_wrap`. For testing purposes, we can create an extra categorical variable by splitting `Petal.Length` in two groups.
+
+```{r iris-facets answer 3.1, fig.align='center'}
+iris$Petal.Type[iris$Petal.Length >= 4 ] <- "Long"
+iris$Petal.Type[iris$Petal.Length < 4 ] <- "Short"
+
+
+ggplot(data = iris, mapping = aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.1) +
+  facet_grid(Petal.Type ~ .)
+
+ggplot(data = iris, mapping = aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.1) +
+  facet_wrap(Petal.Type ~ .)
+```
+
+Which is the best subplot configuration to compare the distributions and why?
+
+<div style="background-color:#F0F0F0">
+##### &emsp;<i class="fas fa-comment-dots"></i> Answer:
+##### &emsp;<i class="fas fa-comment-dots"></i> I think the best subplot configurations would be the `facet_wrap` function, because the different heights of the histogram are more easily comparable
+&emsp;
+</div>
+
+----------------------------------------------------------------------------------
+
+## <i class="fas fa-search"></i> **Example 4** | Customizing a plot
+
+### **4a** | Modify colours
+
+So far we have used the default colour palettes for all our representations. We may need to change them to make them accessible to colourblind people, match the colour palette of our project or give meaningful values (e.g., red for positive and blue for negative). We can control the exact mapping of a variable to an aesthetic attribute with the functions `scale_*`.
+
+```{r change-col-ggplot2, fig.align='center'}
+ggplot(data = iris, mapping = aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.1) +
+  facet_grid(Species ~ .) +
+  scale_fill_manual(values = c("darkorange", "darkgray", "black"))
+```
+
+<i class="fas fa-info-circle"></i> Note that scale functions update both the aesthetic mappings in the plot and in the legend.
+
+### **4b** | Change (or add) axis, legend and plot titles
+
+We may also need to add a title to the plot or change the axis title. In `ggplot2` axis and legend titles can be specified with `name` argument within a `scale_*` function. The title is set with `ggtitle`. You can also use the convenience function `labs`.
+
+```{r titles-ggplot2, fig.align='center'}
+# We save the common part of the plot in a variable and then we can add more components with the "+" sign
+p <- ggplot(data = iris, mapping = aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.1) +
+  facet_grid(Species ~ .)
+
+# Option A:
+p + scale_fill_manual(values = c("darkorange", "darkgray", "black"), name = "Species name") +
+  scale_x_continuous(name = "Sepal width") + 
+  ggtitle("Iris sepal variation")
+
+# Option B:
+# p + scale_fill_manual(values = c("darkorange", "darkgray", "black")) +
+#   labs(title = "Iris sepal variation", x = "Sepal width", fill = "Species name")
+```
+
+### **4c** | Change theme
+
+The appearence of `ggplot2` plots is controlled by the **themes**. The default `ggplot2` theme has a gray background and "is designed to put the data forward yet make comparisons easy". You can change the general appearence by choosing a different theme with `theme_*` functions.
+
+```{r theme}
+ggplot(data = iris, mapping = aes(x = Sepal.Width, y = Sepal.Length)) +
+  geom_point() +
+  theme_classic()
+```
+
+
+### <i class="fas fa-cogs"></i> Exercise
+
+Try other `scale_fill_*` functions in `ggplot2` with pre-defined palettes, such as `scale_fill_brewer` and `scale_fill_viridis_d`. Which palette would you use to ensure that colourblind people can distinguish the colours?
+
+<div style="background-color:#F0F0F0">
+##### &emsp;<i class="fas fa-comment-dots"></i> Answer:
+##### &emsp;<i class="fas fa-comment-dots"></i> In order to ensure that colourblind people can distinguish the colours, it's better to use the `scale_fill_viridis_d` palette.
+&emsp;
+</div>
+
+```{r}
+ggplot(data = iris, mapping = aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.1) +
+  facet_grid(Species ~ .) +
+  scale_fill_viridis_d()
+```
+
+
+Try `subtitle`, `caption` and `tag` arguments from the `labs` function. What are they for?
+
+<div style="background-color:#F0F0F0">
+##### &emsp;<i class="fas fa-comment-dots"></i> Answer:
+##### &emsp;<i class="fas fa-comment-dots"></i> `subtitle` adds a subtitle below the title;
+##### &emsp;<i class="fas fa-comment-dots"></i> `caption` adds a caption below the plot;
+##### &emsp;<i class="fas fa-comment-dots"></i> `tag` adds an identification tag;
+&emsp;
+</div>
+
+```{r}
+ggplot(data = iris, mapping = aes(x = Sepal.Width)) +
+  geom_histogram(binwidth = 0.1) +
+  labs(title = "Title", subtitle = "Subtitle", caption = "Caption", tag = "tag")
+```
+
+
+Which theme do you think that maximises the data-ink ratio?
+
+<div style="background-color:#F0F0F0">
+##### &emsp;<i class="fas fa-comment-dots"></i> Answer:
+##### &emsp;<i class="fas fa-comment-dots"></i> I think the theme which maximizes the data-ink ratio while still clearly showing the data is `theme_minimal`.
+&emsp;
+</div>
+
+```{r answer 4.1, fig.align='center'}
+ggplot(data = iris, mapping = aes(x = Sepal.Width, y = Sepal.Length)) +
+  geom_point() +
+  theme_minimal()
+```
+
+----------------------------------------------------------------------------------
+
+## <i class="fas fa-search"></i> Saving the plots
+
+There are three ways to save a plot to a file (from easy to difficult):
+
+A. Export button from `RStudio` plot pane
+
+B. `ggsave` function from `ggplot2` package
+```{r ggsave}
+p <- ggplot(data = iris, mapping = aes(x = Sepal.Width, y = Sepal.Length)) + geom_point()
+ggsave(filename = "plot.png", plot = p, width = 6, height = 4) # in inches by default
+```
+
+C. Opening > Ploting > Closing a graphic device
+```{r dev}
+png(filename = "plot.png", width = 600, height = 400, res = 150) # In pixels by default
+p
+dev.off()
+```
+
+Plots can be saved using different image file formats. Option **A** gives you the format options in a drop list, option **B** guesses the format from the filename extension, and in option **C** the function that is used to open the graphic device determines the format of the output (in the example `png()`).
+
+The main formats can be classified into:
+
+- Raster/bitmat formats, where information is stored in pixels and have a maximum resolution.
+    + __PNG__: extension .png, supports transparent background, good compression, doesn't lose quality
+    + __JPEG__: extensions .jpg and .jpeg, very good compression, used in personal photography but suffers from quality degradation with repeated modifications
+    + __TIFF__: extensions .tif and .tiff, preferred format for professional printing
+- Vector formats, where information is encoded in geometric shapes that can be rendered at any size without losing resolution. 
+    + __SVG__: extension .svg, standard for vector graphics, requires `svglite` package
+- Hybrid
+    + __PDF__: can contain both vector graphics and raster images
+
+### <i class="fas fa-cogs"></i> Exercise
+
+Save the plot `p` in a raster and a vector format with the same size. What differences do you observe?
+
+<i class="fas fa-info-circle"></i> Note: svg devices require `svglite` R package and other system libraries. Skip the exercise if you get an error!
+
+<div style="background-color:#F0F0F0">
+##### &emsp;<i class="fas fa-comment-dots"></i> Answer:
+##### &emsp;<i class="fas fa-comment-dots"></i> We can observe that the raster format (PNG file) has a much lower resolution compared to the vector format (SVG file), which can be zoomed on without loosing resolution.
+&emsp;
+</div>
+
+----------------------------------------------------------------------------------
+
+## <i class="fa fa-rocket"></i> Wrap up exercise
+
+Could you guess how to represent a line plot with `ggplot2` syntax?
+
+- Represent how `unemploy` variable changes over time (`date` variable) from `economics` data frame with a line plot using `ggplot2` syntax
+- Modify axis and legend names and add a title
+- Save the plot to a file using a raster image format
+
+```{r answer 6.1, fig.align='center'}
+e <- ggplot(data = economics, mapping = aes(x = date, y = unemploy)) + 
+  geom_line() + 
+  labs(title = "Unemploy Plot", x = "Date", y = "Unemploy")
+e
+ggsave(filename = "plot.png", plot = e)
+```

@@ -1,0 +1,171 @@
+---
+title: "**Data visualization in R**<br><font color='#A8A8A8' size='5'>Reproducing `ggplot2` graphs</font><img src='https://www.construction21.org/espana/data/sources/users/8/images/logoesci-fons-blanc.png' style='position:absolute;top:0px;left:0px;' width='10%'/>"
+author: "Alessandro Giulivo"
+date: "1 October 2021"
+output:
+  prettydoc::html_pretty:
+    theme: leonids 
+    highlight: github
+        
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 6, fig.height = 4, fig.align='center')
+# install.packages("prettydoc")
+```
+
+<style>
+  @import url(https://fonts.googleapis.com/css?family=Fira+Sans:300,300i,400,400i,500,500i,700,700i);
+  @import url(https://cdn.rawgit.com/tonsky/FiraCode/1.204/distr/fira_code.css);
+  @import url("https://use.fontawesome.com/releases/v5.10.1/css/all.css");
+  
+  body {
+    font-family: 'Fira Sans','Droid Serif', 'Palatino Linotype', 'Book Antiqua', Palatino, 'Microsoft YaHei', 'Songti SC', serif;
+  }
+  
+  /* Make bold syntax compile to RU-red */
+  strong {
+    color: #cc0033;
+  }
+  
+  .nav3 {
+    height: auto;
+    float: left;
+    padding-left: 20px;
+    padding-top: 20px;
+    padding-right: 20px;
+}
+</style>
+
+
+
+## Introduction
+
+We are going to reproduce three different plots, of which we are only given the data set and the final image file. Each of them has two versions:
+
+- The first version is a plot made just using the layer functions of `ggplot2` and leaving everything else with the defaults. This is, using `ggplot`, `geom_*`, `stat_*` and `annotate_*` functions (click on the image to see it bigger). 
+
+<a href="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p1_simple2020_10_4D11_52_42.png" target="new">
+    <img src="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p1_simple2020_10_4D11_52_42.png" alt="random image" width="30%">
+</a><a href="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p2_simple2020_10_4D11_53_32.png" target="new">
+    <img src="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p2_simple2020_10_4D11_53_32.png" alt="random image" width="30%">
+</a> <a href="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p3_simple2020_10_4D11_54_15.png" target="new">
+    <img src="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p3_simple2020_10_4D11_54_15.png" alt="random image" width="30%">
+</a>
+
+- The second version builds from the first plot to create a more complex display with customized `scales_*`, `coord_*`, `facet_*` or `theme_*`. Helper functions such as `labs()` or `guides()` could also be used (click on the image to see it bigger). 
+
+<a href="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p1_complete2020_10_4D11_52_57.png" target="new">
+    <img src="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p1_complete2020_10_4D11_52_57.png" alt="random image" width="30%">
+</a> <a href="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p2_complete2020_10_4D11_53_47.png" target="new">
+    <img src="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p2_complete2020_10_4D11_53_47.png" alt="random image" width="30%">
+</a> <a href="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p3_complete2020_10_4D11_54_29.png" target="new">
+    <img src="http://bioinformatica.uab.cat/base/documents/sgbcursos/documents/p3_complete2020_10_4D11_54_29.png" alt="random image" width="30%">
+</a>
+
+
+```{r}
+library(ggplot2)
+```
+
+&emsp;<i class="fas fa-info-circle"></i>: `ggplot2` will automatically load all three data sets used in this practical.
+
+### Organization of the practical
+
+You will see different icons through the document, the meaning of which is:
+
+&emsp;<i class="fas fa-info-circle"></i>: additional or useful information<br>
+&emsp;<i class="fas fa-search"></i>: a worked example<br>
+&emsp;<i class="fa fa-cogs"></i>: a practical exercise<br>
+&emsp;<i class="fas fa-comment-dots"></i>: a space to answer the exercise<br>
+&emsp;<i class="fa fa-key"></i>: a hint to solve an exercise<br>
+&emsp;<i class="fa fa-rocket"></i>: a more challenging exercise<br><br>
+
+----------------------------------------------------------------------------------
+
+## **<i class="fa fa-cogs"></i> Simple versions**
+
+### **Plot 1**
+
+```{r answer1.1}
+# Dataset used: diamonds
+ggplot(diamonds, aes(clarity, log10(carat), colour = cut, group = clarity)) +
+  geom_jitter(alpha = 0.7) + 
+  geom_violin(fill = 'black', show.legend = FALSE)
+```
+
+
+### **Plot 2**
+
+```{r answer1.2}
+# Dataset used: mpg
+ggplot(mpg, aes(manufacturer, fill = class)) +
+  geom_bar() + 
+  geom_text(aes(label = ..count..), stat = "count", position = "stack")
+```
+
+### **Plot 3**
+
+```{r answer1.3}
+# Dataset: ToothGrowth
+ggplot(ToothGrowth, aes(factor(dose), len, colour = supp)) +
+  stat_boxplot(aes(fill = supp), colour = "black") +
+  geom_hline(aes(yintercept = mean(len)), linetype = 2) +
+  geom_text(inherit.aes = FALSE, aes(1, 18, label = 'mean', vjust = -1))
+```
+
+
+----------------------------------------------------------------------------------
+
+## **<i class="fa fa-rocket"></i> Complex versions**
+
+### **Plot 1**
+
+```{r answer2.1}
+ggplot(diamonds, aes(clarity, log10(carat), colour = cut, group = clarity)) +
+  geom_jitter(alpha = 0.7, show.legend = FALSE) + 
+  geom_violin(fill = 'black', show.legend = FALSE) +
+  facet_wrap(cut~., nrow = 1) +
+  labs(title = "Diamond quality")
+```
+
+
+### **Plot 2**
+
+```{r answer2.2}
+ggplot(mpg, aes(manufacturer, fill = class)) +
+  geom_bar() + 
+  geom_text(aes(label = ..count..), stat = "count", position = "stack") +
+  coord_flip() +
+  labs(fill = "Car type") +
+  scale_fill_brewer(palette = "Dark2") +
+  ylab("Number of cars")
+```
+
+&emsp;<i class="fa fa-key"></i> This graph uses a `scale_fill_brewer` palette, can you find which one?
+
+<div style="background-color:#F0F0F0">
+##### &emsp;<i class="fas fa-comment-dots"></i> Answer: the palette is 'Dark2'
+&emsp;
+</div>
+
+
+
+### **Plot 3**
+
+```{r answer2.3}
+ggplot(ToothGrowth, aes(factor(dose), len, colour = supp)) +
+  stat_boxplot(aes(fill = supp), colour = "black") +
+  geom_hline(aes(yintercept = mean(len)), linetype = 2) +
+  geom_text(inherit.aes = FALSE, aes(1, 18, label = 'mean', vjust = -1), color="black") +
+  scale_fill_brewer(name = "Supplement", labels = c("Orange juice", "Vitamin C"), palette = "Oranges", direction = -1) +
+  xlab("Dose (mg/day)") +
+  ylab("Tooth length")
+```
+
+&emsp;<i class="fa fa-key"></i> This graph uses a `scale_fill_brewer` palette, can you find which one?
+
+<div style="background-color:#F0F0F0">
+##### &emsp;<i class="fas fa-comment-dots"></i> Answer: the palette is 'Oranges' (but reversed)
+&emsp;
+</div>

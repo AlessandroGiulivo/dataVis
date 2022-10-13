@@ -1,0 +1,274 @@
+---
+title: "Group Project"
+author: "Alessandro Giulivo, Martina Monciotti, Francesca Rinaldi"
+date: "20/10/2021"
+output: html_document
+---
+Signatures of Archaic Adaptive Introgression in Present-Day Human populations
+
+Part A
+
+The information was collected from phase 3 of the 1000 genomes project to detect adaptive introgression among modern human populations and find candidate genes. Adaptive introgression is the process by which evolutionary advantages are gained from interbreeding between modern and archaic humans.
+
+There are 14 columns in the data set and each variable has a different meaning, some of the variables used are:
+- "Mode" is the way that the data was collected, for example "continental" and "continental B" are the two different surveys done according to continents,
+- "Outgroup max frequency" is the maximum frequency for a variable to not be considered an outgroup,
+- "Ingroup min frequency" is the minimum frequency for a variable to be part of the ingroup,
+- "Modern population" defines the modern population that was considered for that modern-archaic pair,
+- "Archaic population" defines the modern population that was considered for that modern-archaic pair,
+- "Chromosome start-end" defines the chromosome that contains the genes considered,
+- "unique_shared" is the number of uniquely shared alleles,
+- "D-statistic" for each archaic group, which measures excess allele sharing between a test population and an outgroup,
+- "fD-statistic", which is similar to the previous one but provides an additional control for local variation in diversity patterns to be able to find loci with excess ancestry from an admixing population,
+- "Genes" are the candidate genes for adaptive introgression,
+- "Lit_overlap" is the literature overlap, which tells whether the gene or region was previously identified by another author
+
+The variables don't really have a unit as they're mostly categorical variables (like continent or population) and statistical values (like the D-statistic or the frequency in %).
+
+The data set has a long format, as can be seen from the first column listing the survey modes or the modern_pop and archaic_pop groups.
+
+In the plots below we will display the data, to make them easily readable and to compare the different modern population-archaic population pairs in order to outline the relationships between the variables.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages("outliers")
+library(readxl)
+library(ggplot2)
+```
+
+
+```{r}
+data <- read_excel("table.xlsx")
+head(data, 10)
+```
+Distribution of number of uniquely shared alleles.
+```{r}
+plot1 <- ggplot(data, aes(Uniq_Shared)) +
+  geom_bar(color= "black", fill= "seagreen3")+
+  annotate(geom = "rect", xmin = 26, ymin = 0, xmax = 42, ymax = 50, fill = "red", alpha = 0.3 )
+plot1+
+ ggtitle("Uniquely shared alleles distribution")
+```
+
+```{r}
+ggplot(data, aes(Archaic_pop)) +
+  geom_bar(color= "black", fill= "lightsalmon1")+
+  ggtitle("Archaic population distribution")
+```
+
+
+```{r}
+ggplot(data, aes(Modern_pop)) +
+  geom_bar(color= "black", fill= "darkslategray3")+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  ggtitle("Modern population distribution")
+```
+```{r}
+ggplot(data, aes(Der_Quantile)) +
+  geom_histogram(color= "black", fill= "mediumpurple2")+
+  ggtitle("Der Quantile distribution")
+```
+```{r}
+ggplot(data, aes(`D(Nea)`)) +
+  geom_histogram(color= "black", fill= "orange")+
+  ggtitle("Neanderthal D-statistic distribution")
+```
+
+```{r}
+ggplot(data, aes(`fD(Nea)`)) +
+  geom_histogram(color= "black", fill= "yellow")+
+  ggtitle("Neanderthal fD-statistic distribution")
+```
+```{r}
+ggplot(data, aes(`D(Den)`)) +
+  geom_histogram(color= "black", fill= "steelblue1")+
+  ggtitle("Denisova D-statistic distribution")
+```
+```{r}
+ggplot(data, aes(`fD(Den)`)) +
+  geom_histogram(color= "black", fill= "lightpink3")+
+  ggtitle("Denisova fD-statistic distribution")
+```
+
+```{r}
+plot2 <- ggplot(data, aes(Modern_pop, log10(Uniq_Shared), fill = Archaic_pop)) +
+  geom_boxplot()+
+  scale_fill_brewer(palette= "Set3")+
+  facet_wrap(Archaic_pop~., nrow=3)+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  stat_summary(fun=mean, geom="point", shape=20, size=5, color="red", fill="red") +
+  geom_hline(yintercept = mean(log10(data$Uniq_Shared)), alpha = 0.5)+
+  ggtitle("Modern population group versus number of unique shared alleles")
+plot2
+```
+```{r}
+plot3 <- ggplot(data, aes(Modern_pop, `D(Nea)`, fill= Modern_pop))+
+  geom_boxplot()+
+  scale_fill_viridis_d()+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  stat_summary(fun=mean, geom="point", shape=20, size=5, color="red", fill="red") +
+  geom_hline(yintercept = mean(data$`D(Nea)`), alpha = 0.5) +
+  guides(fill = FALSE)+
+  ggtitle("Modern population group versus Neanderthal D-statistic")
+plot3
+```
+```{r}
+ggplot(data, aes(Modern_pop, `D(Den)`, fill= Modern_pop))+
+  geom_boxplot()+
+  scale_fill_viridis_d(option = "magma")+
+  stat_summary(fun=mean, geom="point", shape=20, size=5, color="red", fill="red") +
+  geom_hline(yintercept = mean(data$`D(Den)`), alpha = 0.5)+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1)) +
+  guides(fill = "none")+
+  ggtitle("Modern population group versus Denisova D-statistic")
+```
+```{r}
+ggplot(data, aes(Modern_pop, `fD(Nea)`, fill= Modern_pop))+
+  geom_boxplot()+
+  scale_fill_viridis_d(option = "cividis")+
+  stat_summary(fun=mean, geom="point", shape=20, size=5, color="red", fill="red") +
+  geom_hline(yintercept = mean(data$`fD(Nea)`), alpha = 0.5)+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1)) +
+  guides(fill = FALSE)+
+  ggtitle("Modern population group versus Neanderthal fD-statistic")
+```
+```{r}
+ggplot(data, aes(Modern_pop, `fD(Den)`, fill= Modern_pop))+
+  geom_boxplot()+
+  scale_fill_viridis_d(option = "turbo")+
+  stat_summary(fun=mean, geom="point", shape=20, size=5, color="red", fill="red") +
+  geom_hline(yintercept = mean(data$`fD(Nea)`), alpha = 0.5)+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1)) +
+  guides(fill = FALSE)+
+  ggtitle("Modern population group versus Denisova fD-statistic")
+```
+
+Part B
+The three graphics that best describe our data are: plot1 which displays the distribution of the number of uniquely shared alleles, plot2 which shows the relationship between the modern populations and uniquely shared alleles divided by archaic population and plot3 which shows the relationship between the modern populations and the D statistic for the Neanderthal group.
+When looking at the histogram in plot1, it is evident that the most frequent number of uniquely shared alleles is 1 and in general the distribution is positively skewed (skewed to the right), meaning that the mode, the mean and the median are all between 0 and 5. The histogram can help visualize the portion of the archaic-modern pairs that are possibly proof of adaptive introgression, which are the ones with the higher number of uniquely shared alleles. The outliers (the highest numbers, highlighted in a red box) in plot1 could introduce bias and suggest adaptive introgression even when it is positive selection. 
+
+In plot 2 it is easy to compare the median and the mean (shown with a red dot) of each boxplot with the mean of uniquely shared alleles number for the whole dataset. Whenever the mean is above the general one for a certain modern population-archaic population pair (highlighted with different colors), it shows higher chance of adaptive introgression; for example the mean of uniquely shared alleles number of the "CDX"-Neanderthal pair is higher than the general mean but for the "CDX"-Denisova and the "CDX"-Both pairs it is not, showing stronger proof of adaptive introgression between the "CDX" group and the Neanderthal group.
+
+Plot 3 can be used to compare the mean D(Nea) of each modern population to the general D(Nea) mean. The D-statistic for the Neanderthal group measures excess allele sharing between a population and an outgroup using a sister population that is more closely related to the test than the outgroup. Just like for uniquely shared alleles, the higher the D-statistic mean, the higher the chance of adaptive introgression. The mean D(Nea) for the "IBS" group is the highest one above the general mean, showing the best proof for adaptive introgression. The lowest ones below the general mean are the ones of "MXL" and "STU" populations, showing poor evidence for adaptive introgression.
+
+
+PART C
+
+```{r}
+library(plotly)
+ggplotly(plot1)
+```
+
+
+```{r}
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+ui <- fluidPage(
+  titlePanel("Plot 2:"),
+  
+  sidebarLayout(
+    sidebarPanel(
+  
+      checkboxGroupInput("populInput", "Modern_pop",
+                     choices = c("ASW", "BEB", "CDX", "CEU", "CHB", "CHS", "CLM", "EAS", "EUA", "EUR", "FIN", "GRB", "GIH", "IBS", "ITU", "JPT", "KHV", "MXL", "PEL", "PJL",
+                                 "PUR", "SAS", "STU", "TSI"),
+                     selected = c("TSI", "EUR", "GBR", "KHV"))
+      ),
+    
+    mainPanel(plotOutput("plot"))
+    
+  )
+  
+  
+)
+
+server <- function(input, output) {
+  output$plot <- renderPlot({
+    
+    filtered <-
+      data %>%
+      filter(
+             Modern_pop == input$populInput
+      )
+    
+    ggplot(filtered, aes(Modern_pop, log10(Uniq_Shared), fill = Archaic_pop)) +
+  geom_boxplot()+
+  scale_fill_brewer(palette= "Set3")+
+  facet_wrap(Archaic_pop~., nrow=3)+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  stat_summary(fun=mean, geom="point", shape=20, size=5, color="red", fill="red") +
+  geom_hline(yintercept = mean(log10(data$Uniq_Shared)), alpha = 0.5)+
+  ggtitle("Modern population group versus number of unique shared alleles")
+  },
+  height = 700, width = 800
+  )
+  
+  
+  }
+
+shinyApp(ui = ui, server = server)
+```
+
+```{r}
+shinyApp(
+        ui = fluidPage(
+          fluidRow(
+            column(width = 10,plotOutput("plot3", click = "click_action")),
+            column(4,
+                htmlOutput(outputId = "x_value"),                                # <- html output
+                tableOutput("selected_rows")
+            )
+          )
+    ),
+    server = function(input, output) {
+        library(ggplot2)
+        output$plot3 <- renderPlot({
+            ggplot(data, aes(Modern_pop, `D(Nea)`, fill= Modern_pop))+
+            geom_boxplot()+
+            scale_fill_viridis_d()+
+            theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+            stat_summary(fun=mean, geom="point", shape=20, size=5, color="red", fill="red") +
+            geom_hline(yintercept = mean(data$`D(Nea)`), alpha = 0.5) +
+            guides(fill = FALSE)+
+            ggtitle("Modern population group versus Neanderthal D-statistic")
+        })
+        var_levels <- levels(data$Modern_pop)
+        output$x_value <- renderText({
+            if (is.null(input$click_action$x)){
+                return("")        
+            } else {
+                selected_level <- var_levels[round(input$click_action$x)]        
+                HTML("You've selected <code>", selected_level, "</code>",        
+                       "<br><br>Here are the first 10 rows that ",
+                       "match that category:")
+            }
+        })
+        output$selected_rows <- renderTable({
+            if (is.null(input$click_action$x)) {
+                return()
+            } else {
+                selected_level <- var_levels[round(input$click_action$x)]
+                head(data[data$Modern_pop %in% selected_level, ], 10)
+            }
+        })
+    }
+)
+
+```
+
+
+
+
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
